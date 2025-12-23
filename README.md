@@ -57,11 +57,17 @@ Do NOT run this script on the root index.html.
 
 --------------------------------------------------
 
-## 4. Test locally with a Python web server
+## 4. Rename site folder to match GitHub convention
+
+Run:
+
+```mv my-cms.ddev.site docs```
+
+## 5. Test locally with a Python web server
 
 Change into the site directory:
 
-```cd my-cms.ddev.site```
+```cd docs```
 
 Run:
 
