@@ -19,51 +19,34 @@ All pages will initially be downloaded as .html files.
 
 --------------------------------------------------
 
-## 2. Convert .html pages to clean URLs
+--------------------------------------------------
 
-Run the script that restructures pages so:
+## 2. Build clean static site (URLs + assets)
 
-/services.html  →  /services/index.html
-/contact.html   →  /contact/index.html
+Run the single build script that:
 
-It also updates internal links to remove the .html extension.
-This script does NOT touch CSS, JS, or other assets.
+- Converts `.html` pages into clean URLs  
+  (`/services.html` → `/services/index.html`)
+- Updates internal links to `/services`, `/contact`, etc.
+- Preserves `/sitemap.html` at the root
+- Fixes asset paths for subpages one level deep
+- Does NOT modify root assets incorrectly
 
 Run from the directory that contains the downloaded site folder:
 
-``./make-clean-urls.sh``
+```bash
+./build-static-site.sh
+
 
 --------------------------------------------------
 
-## 3. Fix asset paths for subpages
-
-Subpages such as /services and /contact need asset paths adjusted
-because they now live one directory deeper.
-
-This script:
-- Runs from outside the site folder
-- Finds only index.html files one directory deep
-- Updates asset paths such as:
-
-href="sites/..."   → href="../sites/..."
-href="themes/..."  → href="../themes/..."
-href="core/..."    → href="../core/..."
-
-Run:
-
-```./fix-subpage-assets.sh ./my-cms.ddev.site```
-
-Do NOT run this script on the root index.html.
-
---------------------------------------------------
-
-## 4. Rename site folder to match GitHub convention
+## 3. Rename site folder to match GitHub convention
 
 Run:
 
 ```mv my-cms.ddev.site docs```
 
-## 5. Test locally with a Python web server
+## 4. Test locally with a Python web server
 
 Change into the site directory:
 

@@ -1,2 +1,0 @@
-/* @license MIT https://github.com/FriendlyCaptcha/friendly-challenge/blob/master/LICENSE.md */
-(function(){"use strict";Drupal.behaviors.initFriendlyCaptcha={attach:function(context){if(window.friendlyChallenge){var friendlyCaptchaDomElements=context.querySelectorAll(".frc-captcha");friendlyCaptchaDomElements.forEach(function(friendlyCaptchaDomElement){if(!friendlyCaptchaDomElement.hasChildNodes()){var friendlyChallengeWidget=new window.friendlyChallenge.WidgetInstance(friendlyCaptchaDomElement);friendlyChallengeWidget.reset();}});}}};})();;
