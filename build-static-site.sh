@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 ############################################
 # HELPERS
 ############################################
@@ -134,6 +136,17 @@ find . -type f -name "*.html" | while read -r file; do
 done
 
 
+echo
+echo "▶ Fixing JS paths (root-relative)"
+
+find . -type f -name "*.html" | while read -r file; do
+  sed_inplace \
+    -e 's|src="themes/|src="/themes/|g' \
+    -e 's|src="core/|src="/core/|g' \
+    "$file"
+done
+
+
 echo "✔ Assets fixed"
 
 echo
@@ -144,6 +157,29 @@ find . -type f -name "*.html" | while read -r file; do
     -e 's|href="/index"|href="/"|g' \
     "$file"
 done
+
+
+echo
+echo "▶ Injecting mobile menu script"
+
+find . -type f -name "*.html" | while read -r file; do
+  # Only add the script if it's not already present
+  if ! grep -q 'mobile-menu.js' "$file"; then
+    sed_inplace \
+      -e 's|</body>|  <script src="/assets/mobile-menu.js"></script>\n</body>|i' \
+      "$file"
+  fi
+done
+
+echo
+echo "▶ Copying assets folder into site output (non-destructive)"
+
+if [ -d "$ROOT_DIR/assets" ]; then
+  mkdir -p assets
+  cp -R "$ROOT_DIR/assets/." assets/
+else
+  echo "⚠️  No assets folder found next to build-static-site.sh"
+fi
 
 ############################################
 # FINALIZE
