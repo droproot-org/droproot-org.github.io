@@ -1,85 +1,160 @@
 #!/usr/bin/env bash
 set -e
 
-SITE_DIR="${1:-my-cms.ddev.site}"
+############################################
+# HELPERS
+############################################
 
-if [[ ! -d "$SITE_DIR" ]]; then
-  echo "✗ Error: Directory does not exist: $SITE_DIR"
+error() {
+  echo "✗ Error: $1"
   exit 1
+}
+
+# Cross-platform sed (macOS + Linux)
+sed_inplace() {
+  if sed --version >/dev/null 2>&1; then
+    sed -i "$@"
+  else
+    sed -i '' "$@"
+  fi
+}
+
+############################################
+# VALIDATION
+############################################
+
+URL="$1"
+
+[[ -z "$URL" ]] && error "No site URL provided. Usage: ./build-static-site.sh https://example.com"
+
+[[ ! "$URL" =~ ^https?:// ]] && error "Invalid URL format: $URL"
+
+if ! curl -Is "$URL" --max-time 5 | head -n 1 | grep -q "200"; then
+  error "Cannot reach site: $URL"
 fi
 
-echo
-echo "Static site build tasks"
-echo "-----------------------"
-echo "[ ] Restructure HTML pages to clean URLs"
-echo "[ ] Update internal page links"
-echo "[ ] Fix asset paths for subpages"
-echo
+SITE_DIR="$(echo "$URL" | sed -E 's|https?://||')"
 
 ############################################
-# TASK 1 — Restructure HTML files
+# CLEANUP
 ############################################
 
-echo "▶ Restructuring pages (.html → /page/index.html)"
+echo
+echo "▶ Cleanup"
+
+if [[ -d "docs" ]]; then
+  echo "• Moving existing docs → old-docs"
+  rm -rf old-docs
+  mv docs old-docs
+fi
+
+if [[ -d "$SITE_DIR" ]]; then
+  echo "• Removing existing site directory: $SITE_DIR"
+  rm -rf "$SITE_DIR"
+fi
+
+############################################
+# DOWNLOAD SITE
+############################################
+
+echo
+echo "▶ Downloading site"
+echo "• URL:  $URL"
+echo "• Dir:  $SITE_DIR"
+echo
+
+wget \
+  --mirror \
+  --convert-links \
+  --adjust-extension \
+  --page-requisites \
+  --no-parent \
+  --reject-regex='/(node|page)/[0-9]+' \
+  --execute robots=off \
+  "$URL"
+
+[[ ! -d "$SITE_DIR" ]] && error "Download failed — directory not found"
+
+############################################
+# BUILD STATIC SITE
+############################################
+
 cd "$SITE_DIR"
+
+echo
+echo "▶ Restructuring HTML pages"
 
 shopt -s nullglob
 for file in *.html; do
-  [[ "$file" == "index.html" ]] && continue
-  [[ "$file" == "sitemap.html" ]] && continue
-
+  [[ "$file" == "index.html" || "$file" == "sitemap.html" ]] && continue
   name="${file%.html}"
   mkdir -p "$name"
   mv "$file" "$name/index.html"
 done
 shopt -u nullglob
 
-echo "[✓] Pages restructured"
+echo "✔ Pages restructured"
 
 ############################################
-# TASK 2 — Fix internal page links
+# FIX INTERNAL LINKS
 ############################################
 
-echo "▶ Updating internal page links"
+echo
+echo "▶ Updating internal links"
 
-find . -name "*.html" -type f | while read -r file; do
-  sed -i '' -E \
-    's/href="([^":#?\/]+)\.html"/href="\/\1"/g' \
-    "$file"
+find . -type f -name "*.html" | while read -r file; do
+  sed_inplace -E 's/href="([^":#?\/]+)\.html"/href="\/\1"/g' "$file"
+  sed_inplace -E 's/href="\/sitemap"/href="\/sitemap.html"/g' "$file"
+done
 
-  # Ensure sitemap always points to root file
-  sed -i '' -E \
-    's/href="\/sitemap"/href="\/sitemap.html"/g' \
+echo "✔ Links updated"
+
+############################################
+# FIX ASSET PATHS
+############################################
+
+echo
+echo "▶ Fixing asset paths (force root-relative, incl. srcset)"
+
+find . -type f -name "*.html" | while read -r file; do
+  sed_inplace \
+    -e 's|href="sites/|href="/sites/|g' \
+    -e 's|href="themes/|href="/themes/|g' \
+    -e 's|href="core/|href="/core/|g' \
+    -e 's|src="sites/|src="/sites/|g' \
+    -e 's|src="themes/|src="/themes/|g' \
+    -e 's|src="core/|src="/core/|g' \
+    -e 's|srcset="sites/|srcset="/sites/|g' \
+    -e 's|srcset="themes/|srcset="/themes/|g' \
+    -e 's|srcset="core/|srcset="/core/|g' \
+    -e 's|, sites/|, /sites/|g' \
+    -e 's|, themes/|, /themes/|g' \
+    -e 's|, core/|, /core/|g' \
     "$file"
 done
 
-echo "[✓] Internal links updated"
 
-############################################
-# TASK 3 — Fix asset paths for subpages
-############################################
+echo "✔ Assets fixed"
 
-echo "▶ Fixing asset paths for subpages"
+echo
+echo "▶ Fixing homepage links (/index → /)"
 
-find . -mindepth 2 -maxdepth 2 -type f -name "index.html" | while read -r file; do
-  sed -i '' \
-    -e 's|href="sites/|href="../sites/|g' \
-    -e 's|src="sites/|src="../sites/|g' \
-    -e 's|href="themes/|href="../themes/|g' \
-    -e 's|src="themes/|src="../themes/|g' \
-    -e 's|href="core/|href="../core/|g' \
-    -e 's|src="core/|src="../core/|g' \
+find . -type f -name "*.html" | while read -r file; do
+  sed_inplace \
+    -e 's|href="/index"|href="/"|g' \
     "$file"
 done
 
-echo "[✓] Asset paths fixed"
+############################################
+# FINALIZE
+############################################
 
-############################################
-# COMPLETE
-############################################
+cd ..
+
+echo
+echo "▶ Finalizing output"
+mv "$SITE_DIR" docs
 
 echo
 echo "✔ Static site build complete"
-echo "✔ Clean URLs applied"
-echo "✔ Assets fixed for subpages"
-echo
+echo "✔ Output directory: docs/"

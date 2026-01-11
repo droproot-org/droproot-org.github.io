@@ -1,71 +1,81 @@
 # Static Drupal to GitHub Pages Workflow
-=====================================
 
-This workflow converts a local Drupal site into a clean-URL static site that works on GitHub Pages.
+This project provides a single script that converts a local or development Drupal site into a clean-URL static site that works correctly on GitHub Pages.
 
---------------------------------------------------
+The entire process is automated: downloading the site, restructuring URLs, fixing links and assets, and producing a ready-to-deploy docs/ directory.
 
-## 1. Download the site with wget
+## Requirements
 
-Run this from any directory:
+You will need the following installed:
 
-```wget --mirror --convert-links --adjust-extension --page-requisites --no-parent --execute robots=off https://my-cms.ddev.site```
+- Bash
+- wget
+- curl
+- macOS or Linux
 
-This will create a folder such as:
+## Usage
 
-my-cms.ddev.site/
+From the directory containing build-static-site.sh, run:
 
-All pages will initially be downloaded as .html files.
+./build-static-site.sh https://my-cms.ddev.site
 
---------------------------------------------------
+The URL must include http:// or https://.
 
---------------------------------------------------
+## What the script does
 
-## 2. Build clean static site (URLs + assets)
+### Validation
 
-Run the single build script that:
+- Ensures a URL argument is provided
+- Confirms the URL is well-formed
+- Verifies the site is reachable before continuing
+- Exits with an error if validation fails
 
-- Converts `.html` pages into clean URLs  
-  (`/services.html` → `/services/index.html`)
-- Updates internal links to `/services`, `/contact`, etc.
-- Preserves `/sitemap.html` at the root
-- Fixes asset paths for subpages one level deep
-- Does NOT modify root assets incorrectly
+### Cleanup from previous runs
 
-Run from the directory that contains the downloaded site folder:
+- If a docs/ directory exists, it is moved to old-docs/
+- If a previously downloaded site directory exists, it is deleted and overwritten
+- This allows safe, repeatable re-runs
 
-```bash
-./build-static-site.sh
+### Download the site
 
+- Uses wget to fully mirror the site
+- Downloads all required assets (CSS, JS, images)
+- Converts links to local paths
+- Ignores robots restrictions
+- Creates a directory named after the site domain (example: my-cms.ddev.site/)
 
---------------------------------------------------
+### Build clean URLs
 
-## 3. Rename site folder to match GitHub convention
+- Converts root-level .html pages into clean URLs
+- Example: /services.html -> /services/index.html
+- Preserves /index.html
+- Preserves /sitemap.html at the root
 
-Run:
+### Fix internal links
 
-```mv my-cms.ddev.site docs```
+- Updates internal links to use clean paths
+- Example: /services.html -> /services
+- Ensures /sitemap.html always points to the root file
 
-## 4. Test locally with a Python web server
+### Fix asset paths
 
-Change into the site directory:
+- Adjusts CSS, JS, and image paths for subpages one level deep
+- Ensures assets load correctly on pages like /services or /contact
 
-```cd docs```
+### Finalize output
 
-Run:
+- Renames the processed site directory to docs/
+- docs/ is ready for GitHub Pages deployment
 
-```python3 -m http.server 8000 --bind 127.0.0.1```
+## Testing locally
+
+To preview the site before deploying:
+
+cd docs
+python3 -m http.server 8000 --bind 127.0.0.1
 
 Open in your browser:
 
-http://localhost:8000
-http://localhost:8000/services
-http://localhost:8000/contact
-
---------------------------------------------------
-
-Result
-
-- Clean URLs with no .html extensions
-- Works on GitHub Pages with a limited local function
-
+- http://localhost:8000
+- http://localhost:8000/services
+- http://localhost:8000/contact
