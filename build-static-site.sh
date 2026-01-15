@@ -181,6 +181,7 @@ else
   echo "⚠️  No assets folder found next to build-static-site.sh"
 fi
 
+
 ############################################
 # FINALIZE
 ############################################
